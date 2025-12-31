@@ -1,0 +1,11 @@
+
+{
+  "name": "container-manager",
+  "version": "1.0.0",
+  "main": "manager.js",
+  "scripts": { "start": "node manager.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dockerode": "^4.0.9"
+  }
+}
