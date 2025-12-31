@@ -59,14 +59,16 @@ The helps understand:
 ## 5. How to Run
 
 ### Step 1: Build Function Runner Image
+```bash
 cd function-runner
 docker build -t function-runner .
-
+```
 ### Step 2: Start Container Manager
+```bash
 cd ../container-manager
 npm install
 npm start
-
+```
 You should see:
 Container Manager running on port 4000
 
@@ -87,7 +89,7 @@ Container Manager running on port 4000
 ## 7. How to Test Using curl
 
 Example: Sum of numbers
-
+```bash
 curl -X POST http://localhost:4000/execute \
 -H "Content-Type: application/json" \
 -d '{
@@ -97,7 +99,7 @@ curl -X POST http://localhost:4000/execute \
     "numbers": [10,20,30]
   }
 }'
-
+```
 ---
 
 ## 8. How to Test Using Postman(Preferred)
@@ -109,6 +111,7 @@ curl -X POST http://localhost:4000/execute \
 
 
 ### hellofunc
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -116,7 +119,9 @@ curl -X POST http://localhost:4000/execute \
     "name": "Prashasti"
   }
 }
+```
 ### Expected output
+```json
 {
     "success": true,
     "functionResponse": {
@@ -125,8 +130,9 @@ curl -X POST http://localhost:4000/execute \
         "result": "Hello Prashasti! Welcome to CloudFunc 🚀"
     }
 }
-
+```
 ### Uppercase
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -134,8 +140,9 @@ curl -X POST http://localhost:4000/execute \
     "text": "cloud func"
   }
 }
-
+```
 ### Sum
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -143,7 +150,9 @@ curl -X POST http://localhost:4000/execute \
     "numbers": [10, 20, 30]
   }
 }
+```
 ### Multiply Numbers
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -151,7 +160,9 @@ curl -X POST http://localhost:4000/execute \
     "numbers": [2, 3, 4]
   }
 }
+```
 ### Reverse String
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -159,7 +170,9 @@ curl -X POST http://localhost:4000/execute \
     "text": "serverless"
   }
 }
+```
 ### World Count
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -167,7 +180,9 @@ curl -X POST http://localhost:4000/execute \
     "text": "cloud func assignment"
   }
 }
+```
 ### Sort Numbers
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -175,7 +190,9 @@ curl -X POST http://localhost:4000/execute \
     "numbers": [5, 1, 9, 2]
   }
 }
+```
 ### Filter Even Numbers
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -183,7 +200,9 @@ curl -X POST http://localhost:4000/execute \
     "numbers": [1, 2, 3, 4, 5, 6]
   }
 }
+```
 ### Merge Objects
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -195,7 +214,9 @@ curl -X POST http://localhost:4000/execute \
     ]
   }
 }
+```
 ### Delay Execution (Cold Start Simulation)
+```json
 {
   "image": "function-runner",
   "payload": {
@@ -203,7 +224,7 @@ curl -X POST http://localhost:4000/execute \
     "time": 2000
   }
 }
-
+```
 
 ---
 
