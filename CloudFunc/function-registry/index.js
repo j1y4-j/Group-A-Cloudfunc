@@ -18,13 +18,30 @@ const pool = new Pool ({
 
 app.get('/functions', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM functions');
+    const result = await pool.query('SELECT name,owner,image FROM functions');
     res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
 });
+app.get('/function/:name',async (req,res) => {
+  const functionName = req.params.name;
+  try {
+    const result = await pool.query('SELECT name,owner,image FROM functions WHERE name = $1', [functionName]);
+    if(result.rows.length==0) {
+      return res.status(404).send({message: `Function not found`});
+    }
+  res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({error: "Database error"});
+  }
+
+
+  
+},)
 
 app.post('/registerFunction', async (req, res) => {
   const { name, owner, image } = req.body;
@@ -41,6 +58,30 @@ app.post('/registerFunction', async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+app.delete('/deleteFunction/:name', async (req,res) => {
+  try{
+      const nameToDelete = req.params.name;
+      console.log(`Deleting row where name is: ${nameToDelete}`);
+      const result = await pool.query(
+      'DELETE FROM functions WHERE name = $1', 
+      [nameToDelete]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: `Function '${nameToDelete}' not found.` });
+    }
+      res.status(200).send({message:`Row ${nameToDelete} deleted successfully `});
+
+  }
+  catch(err){
+    res.status(500).send({message: `Failed to delete ${nameToDelete}`});
+  }
+
+
+
+  
+}
+)
 
 
 app.listen(3000,()=>{

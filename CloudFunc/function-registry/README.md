@@ -4,33 +4,33 @@ A simple backend service that registers and lists serverless functions using **N
 
 ---
 
-##  Overview
+## Overview
 
 The service stores **metadata** about functions (name, owner, Docker image reference) in a PostgreSQL database. It does **not** store function code or Docker images themselves.
 
 ---
 
-##  Architecture
+## Architecture
 
 ```
 Client → Express API → PostgreSQL (Docker)
 ```
 
-* Node.js runs the API
-* PostgreSQL runs inside a Docker container
+- Node.js runs the API
+- PostgreSQL runs inside a Docker container
 
 ---
 
-##  Technologies
+## Technologies
 
-* Node.js + Express
-* PostgreSQL
-* Docker
-* pg (PostgreSQL client)
+- Node.js + Express
+- PostgreSQL
+- Docker
+- pg (PostgreSQL client)
 
 ---
 
-##  Database
+## Database
 
 **Database:** `functions_db`
 
@@ -48,7 +48,7 @@ CREATE TABLE functions (
 
 ---
 
-##  Run PostgreSQL (Docker)
+## Run PostgreSQL (Docker)
 
 ```bash
 docker run --name function-registry-db \
@@ -61,7 +61,7 @@ docker run --name function-registry-db \
 
 ---
 
-##  Run the Project
+## Run the Project
 
 ```bash
 npm install
@@ -76,7 +76,7 @@ http://localhost:3000
 
 ---
 
-##  API Endpoints
+## API Endpoints
 
 ### POST `/registerFunction`
 
@@ -94,16 +94,22 @@ Registers a new function.
 
 Returns all registered functions.
 
----
+### GET `/function/:name`
 
-##  Key Points
-
-* PostgreSQL stores only function metadata
-* Docker images are referenced by name/URL
-* `pg` is used to execute SQL queries
+- **Returns:** Metadata for a specific function.
+- **Used by:** Gateway to resolve image names.
+- **Response Example:** `{"name": "...", "owner": "...", "image": "..."}`
 
 ---
 
-##  Conclusion
+## Key Points
+
+- PostgreSQL stores only function metadata
+- Docker images are referenced by name/URL
+- `pg` is used to execute SQL queries
+
+---
+
+## Conclusion
 
 This project demonstrates a basic function registry using REST APIs and a Dockerized PostgreSQL database for persistent storage.
