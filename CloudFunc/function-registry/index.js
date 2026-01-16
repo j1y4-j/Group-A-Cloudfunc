@@ -59,31 +59,32 @@ app.post('/registerFunction', async (req, res) => {
   }
 });
 
-app.delete('/deleteFunction/:name', async (req,res) => {
-  try{
-      const nameToDelete = req.params.name;
-      console.log(`Deleting row where name is: ${nameToDelete}`);
-      const result = await pool.query(
-      'DELETE FROM functions WHERE name = $1', 
-      [nameToDelete]
-    );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: `Function '${nameToDelete}' not found.` });
-    }
-      res.status(200).send({message:`Row ${nameToDelete} deleted successfully `});
+// app.delete('/deleteFunction/:name', async (req,res) => {
+//   try{
+//       const nameToDelete = req.params.name;
+//       console.log(`Deleting row where name is: ${nameToDelete}`);
+//       const result = await pool.query(
+//       'DELETE FROM functions WHERE name = $1', 
+//       [nameToDelete]
+//     );
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({ message: `Function '${nameToDelete}' not found.` });
+//     }verify(token, JWT_SECRET)
 
-  }
-  catch(err){
-    res.status(500).send({message: `Failed to delete ${nameToDelete}`});
-  }
+//       res.status(200).send({message:`Row ${nameToDelete} deleted successfully `});
+
+//   }
+//   catch(err){
+//     res.status(500).send({message: `Failed to delete ${nameToDelete}`});
+//   }
 
 
 
   
-}
-)
+// }
+// )
 
 
-app.listen(3000,()=>{
-    console.log("Server Running on Port 3000");
+app.listen(4000,()=>{
+    console.log("Server Running on Port 4000");
 });

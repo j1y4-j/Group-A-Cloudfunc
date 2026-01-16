@@ -27,7 +27,7 @@ app.post("/invoke", verifyJWT, async (req, res) => {
       `http://localhost:4000/functions/${functionName}`
     );
 
-    const imageName = registryResponse.data.imageName;
+    const imageName = registryResponse.data.image;
 
     if (!imageName) {
       return res.status(404).json({
