@@ -1,74 +1,174 @@
-# Function Registry Service
-
-A simple backend service that registers and lists serverless functions using **Node.js, Express, PostgreSQL, and Docker**.
+Absolutely 👍
+Here is a **more concise, clean, and polished `README.md`**, written exactly in **Markdown file format**, ready to **copy–paste as-is**.
 
 ---
+
+```md
+# Registry Service – CloudFunc
 
 ## Overview
 
-The service stores **metadata** about functions (name, owner, Docker image reference) in a PostgreSQL database. It does **not** store function code or Docker images themselves.
+The **Registry Service** manages all persistent metadata in the CloudFunc system.  
+It tracks **registered functions** and **execution jobs**, enabling asynchronous and scalable function execution.
+
+This service does **not** execute functions or manage Docker containers.  
+It only exposes REST APIs used by other services.
 
 ---
 
-## Architecture
+## Responsibilities
+
+### Function Registry
+
+- Stores metadata for functions built as Docker images
+- Each function is registered once and referenced by name
+
+### Job Registry
+
+- Tracks individual function invocations as jobs
+- Maintains execution lifecycle and results
+
+---
+
+## Tech Stack
+
+- Node.js
+- Express
+- PostgreSQL (Dockerized)
+- pg (Postgres client)
+
+---
+
+## Database Schema
+
+### `functions`
+
+| Column     | Description         |
+| ---------- | ------------------- |
+| name (PK)  | Function name       |
+| image_name | Docker image tag    |
+| runtime    | Runtime environment |
+| created_at | Creation timestamp  |
+
+---
+
+### `jobs`
+
+| Column        | Description                           |
+| ------------- | ------------------------------------- |
+| job_id (PK)   | Unique job ID                         |
+| function_name | Function invoked                      |
+| payload       | Input payload (JSON)                  |
+| status        | queued / running / completed / failed |
+| result        | Execution output                      |
+| error         | Error message                         |
+| submitted_at  | Job creation time                     |
+| completed_at  | Completion time                       |
+| attempts      | Retry count                           |
+
+---
+
+## API Endpoints
+
+### Function Registry
+
+**Create Function**
+```
+
+POST /functions
+
+````
+```json
+{
+  "name": "hello",
+  "imageName": "cloudfunc-hello:latest",
+  "runtime": "nodejs"
+}
+````
+
+**Get Function**
 
 ```
-Client → Express API → PostgreSQL (Docker)
-```
-
-- Node.js runs the API
-- PostgreSQL runs inside a Docker container
-
----
-
-## Technologies
-
-- Node.js + Express
-- PostgreSQL
-- Docker
-- pg (PostgreSQL client)
-
----
-
-## Database
-
-**Database:** `functions_db`
-
-**Table:** `functions`
-
-```sql
-CREATE TABLE functions (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100),
-  owner VARCHAR(100),
-  image VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+GET /functions/:name
 ```
 
 ---
 
-## Run PostgreSQL (Docker)
+### Job Registry
 
-```bash
-docker run --name function-registry-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=functions_db \
-  -p 5433:5432 \
-  -d postgres
+**Create Job**
+
+```
+POST /jobs
+```
+
+```json
+{
+  "jobId": "job-001",
+  "functionName": "hello",
+  "payload": { "name": "test" }
+}
+```
+
+**Get Job**
+
+```
+GET /jobs/:jobId
+```
+
+**Update Job**
+
+```
+PATCH /jobs/:jobId
+```
+
+```json
+{ "status": "running" }
+```
+
+Valid transitions:
+
+```
+queued → running → completed / failed
 ```
 
 ---
 
-## Run the Project
+## Job Lifecycle
+
+```
+queued → running → completed
+              ↘ failed
+```
+
+Invalid state transitions are rejected.
+
+---
+
+## Integration
+
+- **Gateway**: Registers functions and creates jobs
+- **Worker**: Fetches function metadata and updates job state
+
+---
+
+## What This Service Does NOT Do
+
+- Build Docker images
+- Run containers
+- Execute functions
+- Manage message queues
+
+---
+
+## Running the Service
 
 ```bash
 npm install
 node index.js
 ```
 
-Server runs at:
+Runs at:
 
 ```
 http://localhost:3000
@@ -76,40 +176,27 @@ http://localhost:3000
 
 ---
 
-## API Endpoints
+## Testing
 
-### POST `/registerFunction`
+Endpoints were tested using `curl` and PostgreSQL queries.
 
-Registers a new function.
+Example:
 
-```json
-{
-  "name": "image-resize",
-  "owner": "jiya",
-  "image": "docker.io/jiya/image-resize:latest"
-}
+```bash
+curl localhost:3000/health
 ```
 
-### GET `/functions`
+---
 
-Returns all registered functions.
+## Responsibility
 
-### GET `/function/:name`
+**Registry Service**
 
-- **Returns:** Metadata for a specific function.
-- **Used by:** Gateway to resolve image names.
-- **Response Example:** `{"name": "...", "owner": "...", "image": "..."}`
+Implemented function metadata storage, job tracking, validations, and lifecycle enforcement.
+
+```
 
 ---
 
-## Key Points
 
-- PostgreSQL stores only function metadata
-- Docker images are referenced by name/URL
-- `pg` is used to execute SQL queries
-
----
-
-## Conclusion
-
-This project demonstrates a basic function registry using REST APIs and a Dockerized PostgreSQL database for persistent storage.
+```
