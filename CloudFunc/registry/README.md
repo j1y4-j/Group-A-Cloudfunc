@@ -1,9 +1,4 @@
-Absolutely 👍
-Here is a **more concise, clean, and polished `README.md`**, written exactly in **Markdown file format**, ready to **copy–paste as-is**.
 
----
-
-```md
 # Registry Service – CloudFunc
 
 ## Overview
