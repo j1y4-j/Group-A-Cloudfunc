@@ -189,9 +189,4 @@ curl localhost:3000/health
 
 Implemented function metadata storage, job tracking, validations, and lifecycle enforcement.
 
-```
 
----
-
-
-```
