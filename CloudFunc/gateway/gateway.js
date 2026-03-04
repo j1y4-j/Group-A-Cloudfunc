@@ -1,62 +1,71 @@
+require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
+const amqp = require("amqplib");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-const PORT = 3000;
-
 app.use(express.json());
 
-function verifyJWT(req, res, next) {
-  console.log("JWT verification placeholder");
-  next();
+const PORT = 8080;
+let channel;
+
+async function startServer() {
+  try {
+    const connection = await amqp.connect("amqp://localhost");
+    channel = await connection.createChannel();
+    await channel.assertQueue("executions");
+
+    console.log("✅ Connected to RabbitMQ");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Gateway running on port ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("RabbitMQ error:", err.message);
+    process.exit(1);
+  }
 }
 
-app.post("/invoke", verifyJWT, async (req, res) => {
-  try {
-    const { functionName, payload } = req.body;
+app.post("/invoke", async (req, res) => {
+  const { functionName, payload } = req.body;
 
-    if (!functionName || payload === undefined) {
-      return res.status(400).json({
-        error: "functionName and payload are required"
-      });
-    }
-
-    console.log("Invoke request received:", functionName);
-
-    const registryResponse = await axios.get(
-      `http://localhost:4000/functions/${functionName}`
-    );
-
-    const imageName = registryResponse.data.image;
-
-    if (!imageName) {
-      return res.status(404).json({
-        error: "Function exists but image not found"
-      });
-    }
-
-    console.log("Resolved image:", imageName);
-
-    const containerResponse = await axios.post(
-      "http://localhost:5000/execute",
-      {
-        imageName,
-        payload
-      }
-    );
-
-    return res.status(200).json({
-      functionName,
-      result: containerResponse.data
+  if (!functionName || payload === undefined) {
+    return res.status(400).json({
+      error: "functionName and payload are required"
     });
+  }
+
+  try {
+    const jobId = uuidv4();
+
+    // 1️⃣ Verify function exists in Registry
+    await axios.get(
+      `http://localhost:3000/functions/${functionName}`
+    );
+
+    // 2️⃣ Create job in Registry
+    await axios.post("http://localhost:3000/jobs", {
+      jobId,
+      functionName,
+      payload,
+      status: "queued"
+    });
+
+    // 3️⃣ Publish job to RabbitMQ
+    channel.sendToQueue(
+      "executions",
+      Buffer.from(JSON.stringify({ jobId, functionName, payload }))
+    );
+
+    return res.status(200).json({ jobId });
 
   } catch (error) {
     console.error("Gateway error:", error.message);
 
     if (error.response) {
-      return res.status(error.response.status).json({
-        error: error.response.data
-      });
+      return res.status(error.response.status).json(error.response.data);
     }
 
     return res.status(500).json({
@@ -65,10 +74,15 @@ app.post("/invoke", verifyJWT, async (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Gateway Service is running");
+app.get("/jobs/:jobId", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:3000/jobs/${req.params.jobId}`
+    );
+    res.json(response.data);
+  } catch {
+    res.status(404).json({ error: "Job not found" });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Gateway Service running on port ${PORT}`);
-});
+startServer();
