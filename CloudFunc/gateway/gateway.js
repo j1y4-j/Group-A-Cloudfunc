@@ -7,12 +7,15 @@ const { v4: uuidv4 } = require("uuid");
 const app = express();
 app.use(express.json());
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
+const REGISTRY_URL = process.env.REGISTRY_URL || "http://localhost:3000";
+const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost";
+
 let channel;
 
 async function startServer() {
   try {
-    const connection = await amqp.connect("amqp://localhost");
+    const connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
     await channel.assertQueue("executions");
 
@@ -23,7 +26,7 @@ async function startServer() {
     });
 
   } catch (err) {
-    console.error("RabbitMQ error:", err.message);
+    console.error("RabbitMQ connection error:", err.message);
     process.exit(1);
   }
 }
@@ -41,22 +44,25 @@ app.post("/invoke", async (req, res) => {
     const jobId = uuidv4();
 
     // 1️⃣ Verify function exists in Registry
-    await axios.get(
-      `http://localhost:3000/functions/${functionName}`
-    );
+    await axios.get(`${REGISTRY_URL}/functions/${functionName}`);
 
     // 2️⃣ Create job in Registry
-    await axios.post("http://localhost:3000/jobs", {
+    await axios.post(`${REGISTRY_URL}/jobs`, {
       jobId,
       functionName,
-      payload,
-      status: "queued"
+      payload
     });
 
     // 3️⃣ Publish job to RabbitMQ
     channel.sendToQueue(
       "executions",
-      Buffer.from(JSON.stringify({ jobId, functionName, payload }))
+      Buffer.from(
+        JSON.stringify({
+          jobId,
+          functionName,
+          payload
+        })
+      )
     );
 
     return res.status(200).json({ jobId });
@@ -77,11 +83,15 @@ app.post("/invoke", async (req, res) => {
 app.get("/jobs/:jobId", async (req, res) => {
   try {
     const response = await axios.get(
-      `http://localhost:3000/jobs/${req.params.jobId}`
+      `${REGISTRY_URL}/jobs/${req.params.jobId}`
     );
     res.json(response.data);
-  } catch {
-    res.status(404).json({ error: "Job not found" });
+  } catch (error) {
+    if (error.response) {
+      return res.status(error.response.status).json(error.response.data);
+    }
+
+    res.status(500).json({ error: "Gateway error retrieving job" });
   }
 });
 
