@@ -212,8 +212,8 @@ cloudfunc/
 ### Clone Repository
 
 ```bash
-git clone https://github.com/your-repo/cloudfunc.git
-cd cloudfunc
+git clone https://github.com/j1y4-j/Group-A-Cloudfunc.git
+cd CloudFunc
 ```
 
 ### Install Dependencies
@@ -260,7 +260,7 @@ node container-manager/manager.js
 POST /register
 ```
 ```
-JSON
+
 {
   "name": "sum",
   "runtime": "nodejs",
@@ -274,7 +274,7 @@ JSON
 POST /invoke
 ```
 ```
-JSON
+
 {
   "functionName": "sum",
   "payload": {
@@ -287,7 +287,7 @@ JSON
 #### Response:
 
 ```
-JSON
+
 {
   "jobId": "uuid"
 }
@@ -303,7 +303,7 @@ GET /jobs/:jobId
 Sum
 
 ```
-JavaScript
+
 const payload = JSON.parse(process.env.PAYLOAD || "{}");
 console.log(payload.a + payload.b);
 ```
@@ -311,7 +311,7 @@ console.log(payload.a + payload.b);
 Reverse String
 
 ```
-JavaScript
+
 const payload = JSON.parse(process.env.PAYLOAD || "{}");
 console.log(payload.text.split("").reverse().join(""));
 ```
