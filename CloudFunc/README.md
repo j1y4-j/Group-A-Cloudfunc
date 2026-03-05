@@ -9,6 +9,7 @@ It allows users to **register functions as Docker images and invoke them asynchr
 
 CloudFunc follows an **event-driven microservices architecture**.
 
+```
 User
 ↓
 Gateway
@@ -22,6 +23,7 @@ Worker
 Container Manager
 ↓
 Docker Containers
+```
 
 Each component is **decoupled**, allowing scalable and fault-tolerant execution.
 
@@ -175,7 +177,7 @@ GET /jobs/:jobId
 ---
 
 ## Project Structure
-
+```
 cloudfunc/
 │
 ├── gateway/
@@ -195,7 +197,7 @@ cloudfunc/
 │ └── manager.js
 │
 └── tmp/
-
+```
 ---
 
 ## Setup
