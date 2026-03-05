@@ -71,10 +71,11 @@ Responsibilities:
 
 Endpoints:
 
+```
 POST /register
 POST /invoke
 GET /jobs/:jobId
-
+```
 ---
 
 ### Function Registry
