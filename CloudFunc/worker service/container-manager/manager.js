@@ -1,9 +1,14 @@
+require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const { exec } = require("child_process");
 
 const app = express();
 app.use(express.json());
+
+const PORT = process.env.PORT || 4000;
+const REGISTRY_URL = process.env.REGISTRY_URL || "http://localhost:3000";
+
 
 // -----------------------------
 // WARM CONTAINER POOL
@@ -15,107 +20,153 @@ const containerPool = new Map();
 // containerId -> lastUsedTime
 const lastUsed = new Map();
 
+
 // -----------------------------
-// START CONTAINER
+// START OR REUSE CONTAINER
 // -----------------------------
 
-function startContainer(functionName) {
+function startContainer(functionName, imageName) {
 
-  return new Promise((resolve) => {
+  if (containerPool.has(functionName)) {
 
-    // Fake container id for now
-    if (containerPool.has(functionName)) {
+    const containerId = containerPool.get(functionName);
 
-      const cid = containerPool.get(functionName);
+    console.log("Reusing warm container:", containerId);
 
-      console.log("Reusing warm container:", cid);
+    lastUsed.set(containerId, Date.now());
 
-      lastUsed.set(cid, Date.now());
+    return Promise.resolve(containerId);
+  }
 
-      return resolve(cid);
-    }
+  return new Promise((resolve, reject) => {
 
-    const fakeContainerId = "local-runner";
+    const containerName = `cloudfunc-${functionName}-${Date.now()}`;
 
-    console.log("Using local runner as container");
+    const cmd = `docker run -dit --name ${containerName} ${imageName} sh`;
 
-    containerPool.set(functionName, fakeContainerId);
-    lastUsed.set(fakeContainerId, Date.now());
+    exec(cmd, (err, stdout, stderr) => {
 
-    resolve(fakeContainerId);
+      if (err) {
+        console.error("Docker start failed:", stderr);
+        return reject(err);
+      }
+
+      const containerId = stdout.trim();
+
+      console.log("Started new container:", containerId);
+
+      containerPool.set(functionName, containerId);
+      lastUsed.set(containerId, Date.now());
+
+      resolve(containerId);
+    });
+
   });
 }
 
+
+// -----------------------------
 // CLEANUP IDLE CONTAINERS
+// -----------------------------
 
 setInterval(() => {
 
-  console.log("Running cleanup job...");
+  const now = Date.now();
 
-  for (let [fn, cid] of containerPool.entries()) {
+  for (const [fn, containerId] of containerPool.entries()) {
 
-    const last = lastUsed.get(cid);
+    const last = lastUsed.get(containerId);
 
-    const idleTime = Date.now() - last;
+    if (!last) continue;
 
-    if (idleTime > 5 * 60 * 1000) { // 5 minutes
+    const idleTime = now - last;
 
-      console.log("Removing idle container:", cid);
+    // remove container idle for >5 minutes
+    if (idleTime > 5 * 60 * 1000) {
 
-      exec(`docker stop ${cid}`);
-      exec(`docker rm ${cid}`);
+      console.log("Removing idle container:", containerId);
+
+      exec(`docker stop ${containerId}`);
+      exec(`docker rm ${containerId}`);
 
       containerPool.delete(fn);
-      lastUsed.delete(cid);
+      lastUsed.delete(containerId);
     }
+
   }
 
-}, 60 * 1000); // Every 1 minute
+}, 60000);
+
 
 // -----------------------------
-// EXECUTE FUNCTION API
+// EXECUTE FUNCTION
 // -----------------------------
 
 app.post("/execute", async (req, res) => {
 
-  const { jobId,
-    functionName,
-    payload } = req.body;
+  const { jobId, functionName, payload } = req.body;
 
   try {
 
-    const containerId = await startContainer(functionName);
+    console.log(`Executing function: ${functionName}`);
 
-    const runnerURL = `http://localhost:4000/run`; 
-    // assuming runner exposed on 4000
-
-    // TIMEOUT CONFIG (30 seconds)
-    const response = await axios.post(
-      runnerURL,
-      payload,
-      { timeout: 30000 }
+    // 1️⃣ get image name from registry
+    const response = await axios.get(
+      `${REGISTRY_URL}/functions/${functionName}`
     );
 
-    lastUsed.set(containerId, Date.now());
+    const imageName = response.data.image_name;
 
-    res.json(response.data);
+    // 2️⃣ start or reuse container
+    const containerId = await startContainer(functionName, imageName);
 
-  } catch (err) {
+    const payloadString = JSON.stringify(payload || {});
 
-    console.log("Execution timeout or error");
+    // 3️⃣ execute function inside container
+    const command =
+      `docker exec -e PAYLOAD='${payloadString}' ${containerId} node index.js`;
+
+    exec(command, (err, stdout, stderr) => {
+
+      if (err) {
+
+        console.error("Execution error:", stderr);
+
+        return res.status(500).json({
+          success: false,
+          error: stderr
+        });
+      }
+
+      console.log("Function output:", stdout);
+
+      lastUsed.set(containerId, Date.now());
+
+      res.json({
+        success: true,
+        result: stdout.trim()
+      });
+
+    });
+
+  } catch (error) {
+
+    console.error("Execution failed:", error.message);
 
     res.status(500).json({
       success: false,
-      error: "Function execution timeout",
+      error: "Function execution failed"
     });
+
   }
 
 });
+
 
 // -----------------------------
 // START SERVER
 // -----------------------------
 
-app.listen(3000, () => {
-  console.log("Container Manager running on port 3000");
+app.listen(PORT, () => {
+  console.log(`Container Manager running on port ${PORT}`);
 });

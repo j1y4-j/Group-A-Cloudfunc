@@ -3,6 +3,8 @@ const express = require("express");
 const axios = require("axios");
 const amqp = require("amqplib");
 const { v4: uuidv4 } = require("uuid");
+const fs = require("fs");
+const { exec } = require("child_process");
 
 const app = express();
 app.use(express.json());
@@ -13,11 +15,17 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost";
 
 let channel;
 
+// --------------------------------
+// START SERVER + RABBITMQ
+// --------------------------------
+
 async function startServer() {
   try {
+
     const connection = await amqp.connect(RABBITMQ_URL);
     channel = await connection.createChannel();
-    await channel.assertQueue("executions");
+
+    await channel.assertQueue("executions", { durable: true });
 
     console.log("✅ Connected to RabbitMQ");
 
@@ -31,7 +39,114 @@ async function startServer() {
   }
 }
 
+
+
+// --------------------------------
+// REGISTER FUNCTION
+// --------------------------------
+
+app.post("/register", async (req, res) => {
+
+  const { name, runtime, code } = req.body;
+
+  if (!name || !runtime || !code) {
+    return res.status(400).json({
+      error: "name, runtime and code are required"
+    });
+  }
+
+  const dir = `tmp/function-${name}-${Date.now()}`;
+  const imageName = `cloudfunc-${name}:latest`;
+
+  try {
+
+    // create temp folder
+    fs.mkdirSync(dir, { recursive: true });
+
+    // write user function
+    fs.writeFileSync(`${dir}/index.js`, code);
+
+    // correct Dockerfile for warm containers
+    const dockerfile = `
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY . .
+
+# keep container alive for warm execution
+CMD ["sh","-c","while true; do sleep 1000; done"]
+`;
+
+    fs.writeFileSync(`${dir}/Dockerfile`, dockerfile);
+
+    console.log("🔨 Building Docker image...");
+
+    exec(`docker build -t ${imageName} ${dir}`, async (err, stdout, stderr) => {
+
+      try {
+
+        if (err) {
+          console.error(stderr);
+          return res.status(500).json({
+            error: "Docker build failed"
+          });
+        }
+
+        console.log(stdout);
+        console.log("✅ Docker image built:", imageName);
+
+        // store metadata in registry
+        await axios.post(`${REGISTRY_URL}/functions`, {
+          name,
+          imageName,
+          runtime
+        });
+
+        res.status(201).json({
+          message: "Function registered successfully",
+          image: imageName
+        });
+
+      } catch (error) {
+
+        console.error("Registry error:", error.message);
+
+        res.status(500).json({
+          error: "Function registration failed"
+        });
+
+      } finally {
+
+        // cleanup tmp folder
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log("🧹 Temp folder removed:", dir);
+
+      }
+
+    });
+
+  } catch (error) {
+
+    console.error("Register error:", error.message);
+
+    fs.rmSync(dir, { recursive: true, force: true });
+
+    res.status(500).json({
+      error: "Function registration failed"
+    });
+  }
+
+});
+
+
+
+// --------------------------------
+// INVOKE FUNCTION
+// --------------------------------
+
 app.post("/invoke", async (req, res) => {
+
   const { functionName, payload } = req.body;
 
   if (!functionName || payload === undefined) {
@@ -41,19 +156,20 @@ app.post("/invoke", async (req, res) => {
   }
 
   try {
+
     const jobId = uuidv4();
 
-    // 1️⃣ Verify function exists in Registry
+    // verify function exists
     await axios.get(`${REGISTRY_URL}/functions/${functionName}`);
 
-    // 2️⃣ Create job in Registry
+    // create job
     await axios.post(`${REGISTRY_URL}/jobs`, {
       jobId,
       functionName,
       payload
     });
 
-    // 3️⃣ Publish job to RabbitMQ
+    // push job to RabbitMQ
     channel.sendToQueue(
       "executions",
       Buffer.from(
@@ -62,37 +178,55 @@ app.post("/invoke", async (req, res) => {
           functionName,
           payload
         })
-      )
+      ),
+      { persistent: true }
     );
 
-    return res.status(200).json({ jobId });
+    res.status(200).json({ jobId });
 
   } catch (error) {
+
     console.error("Gateway error:", error.message);
 
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }
 
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal Gateway Error"
     });
   }
+
 });
 
+
+
+// --------------------------------
+// CHECK JOB STATUS
+// --------------------------------
+
 app.get("/jobs/:jobId", async (req, res) => {
+
   try {
+
     const response = await axios.get(
       `${REGISTRY_URL}/jobs/${req.params.jobId}`
     );
+
     res.json(response.data);
+
   } catch (error) {
+
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }
 
-    res.status(500).json({ error: "Gateway error retrieving job" });
+    res.status(500).json({
+      error: "Gateway error retrieving job"
+    });
   }
+
 });
+
 
 startServer();
