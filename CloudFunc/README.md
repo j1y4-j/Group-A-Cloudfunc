@@ -213,7 +213,8 @@ cd cloudfunc
 
 Run inside each service folder:
 
-```bash npm install
+```bash
+npm install
 
 ```
 
@@ -280,8 +281,9 @@ POST /invoke
 
 #### Check Job Status
 
+```
 GET /jobs/:jobId
-
+```
 #### Example Functions
 
 Sum
@@ -314,7 +316,7 @@ console.log(payload.text.split("").reverse().join(""));
 
 ---
 
-## Resume Description
+## Conclusion
 
 ### CloudFunc – Serverless Execution Platform
 
