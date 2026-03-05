@@ -121,8 +121,9 @@ Responsibilities:
 
 ### 1. Register Function
 
+```
 POST /register
-
+```
 Gateway:
 
 - Creates temporary build folder
@@ -135,8 +136,9 @@ Gateway:
 
 ### 2. Invoke Function
 
+```
 POST /invoke
-
+```
 Gateway:
 
 - Verifies function exists
@@ -169,11 +171,15 @@ Container manager:
 
 Worker updates job status:
 
+```
 queued → running → completed / failed
+```
 
 User can query result:
 
+```
 GET /jobs/:jobId
+```
 
 ---
 
@@ -221,7 +227,8 @@ npm install
 
 ### Start PostgreSQL (Docker)
 
-```bash docker run -d \
+```bash
+docker run -d \
 -p 5433:5432 \
 -e POSTGRES_PASSWORD=postgres \
 -e POSTGRES_DB=cloudfunc \
@@ -230,7 +237,8 @@ postgres
 
 ### Start RabbitMQ
 
-```bash docker run -d -p 5672:5672 rabbitmq
+```bash
+docker run -d -p 5672:5672 rabbitmq
 
 ```
 
@@ -238,7 +246,8 @@ postgres
 
 Run each service in separate terminals:
 
-```bash node registry/index.js
+```bash
+node registry/index.js
 node gateway/gateway.js
 node worker/index.js
 node container-manager/manager.js
@@ -247,10 +256,11 @@ node container-manager/manager.js
 ### Example Usage
 
 #### Register Function
-
+```
 POST /register
-
-```JSON
+```
+```
+JSON
 {
   "name": "sum",
   "runtime": "nodejs",
@@ -260,9 +270,11 @@ POST /register
 
 #### Invoke Function
 
+```
 POST /invoke
-
-```JSON
+```
+```
+JSON
 {
   "functionName": "sum",
   "payload": {
@@ -274,7 +286,8 @@ POST /invoke
 
 #### Response:
 
-```JSON
+```
+JSON
 {
   "jobId": "uuid"
 }
@@ -289,14 +302,16 @@ GET /jobs/:jobId
 
 Sum
 
-```JavaScript
+```
+JavaScript
 const payload = JSON.parse(process.env.PAYLOAD || "{}");
 console.log(payload.a + payload.b);
 ```
 
 Reverse String
 
-```JavaScript
+```
+JavaScript
 const payload = JSON.parse(process.env.PAYLOAD || "{}");
 console.log(payload.text.split("").reverse().join(""));
 ```
