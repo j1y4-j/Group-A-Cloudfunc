@@ -202,8 +202,7 @@ cloudfunc/
 │
 ├── container-manager/
 │ └── manager.js
-│
-└── tmp/
+
 ```
 ---
 
